@@ -39,7 +39,7 @@ contract FlightSuretyApp {
     }
 
     mapping(address => address[]) public airlineVotes;
-    FlightSuretyDate fsd;
+    FlightSuretyData fsd;
 
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
@@ -69,9 +69,9 @@ contract FlightSuretyApp {
         _;
     }
 
-    modifier isAirlineNotRegistered() {
+    modifier isAirlineNotRegistered(address airline) {
         require(
-            fsd.isRegistered(msg.sender), "Airline must be registered"
+            fsd.isAirlineRegistered(msg.sender), "Airline must be registered"
         );
         _;
     }
@@ -126,7 +126,7 @@ contract FlightSuretyApp {
                                 public 
     {
         contractOwner = msg.sender;
-        fsd = fsData;
+        fsd = FlightSuretyData(fsData);
     }
 
     /********************************************************************************************/
@@ -135,7 +135,7 @@ contract FlightSuretyApp {
 
     function isOperational() 
                             public 
-                            pure 
+                            view 
                             returns(bool) 
     {
         return operational;  // Modify to call data contract's status
@@ -155,13 +155,13 @@ contract FlightSuretyApp {
                                 address airline
                             )
                             external
-                            requiresIsOperational
+                            requireIsOperational
                             onlyNotRegisteredAirline(airline)
                             onlyFundedAirline(msg.sender)
                             returns(bool success, uint256 votes)
     {
         if (fsd.getRegisteredAirlineCount() <= AIRLINE_VOTING_THRESHOLD) {
-            fsd.registerAirline(airlin, msg.sender);
+            fsd.registerAirline(airline, msg.sender);
             return(true, 0);
         } else {
             bool duplicate = false;
@@ -175,7 +175,7 @@ contract FlightSuretyApp {
             if(!duplicate) 
                 airlineVotes[airline].push(msg.sender);
             
-            if(airlineVotes[airline].length >= fsd.getRegisteredAirlineCount.div(AIRLINE_VOTES_REQUIRED)) {
+            if(airlineVotes[airline].length >= fsd.getRegisteredAirlineCount().div(AIRLINE_VOTES_REQUIRED)) {
                 fsd.registerAirline(airline, msg.sender);
                 return(true, airlineVotes[airline].length);
             }
@@ -190,14 +190,14 @@ contract FlightSuretyApp {
     */  
     function registerFlight
                                 (
-                                    bytes32 flight,
+                                    string calldata flight,
                                     uint256 timestamp,
                                     string calldata from,
                                     string calldata to,
-                                    string landing
+                                    string calldata landing
                                 )
                                 external
-                                requiresIsOperational
+                                requireIsOperational
                                 onlyFundedAirline(msg.sender)
     {
         fsd.registerFlight(
@@ -231,13 +231,13 @@ contract FlightSuretyApp {
     function fetchFlightStatus
                         (
                             address airline,
-                            string flight,
+                            string calldata flight,
                             uint256 timestamp,
-                            bytes32 flight                       
+                            bytes32 flightKey                       
                         )
                         external
-                        onlyRegisteredFlight(flight)
-                        onlyNotLandedFlight(flight)
+                        onlyRegisteredFlight(flightKey)
+                        onlyNotLandedFlight(flightKey)
 
     {
         uint8 index = getRandomIndex(msg.sender);
@@ -255,24 +255,25 @@ contract FlightSuretyApp {
     function fundAirline ()
                          external 
                          payable 
-                         requiresIsOperational
+                         requireIsOperational
                          onlyRegisteredAirline(msg.sender)
                          onlyNotFundedAirline(msg.sender)
-                         require(msg.value >= AIRLINE_REGISTRATION_FEE, "Minimum funding needed to register") 
+                       //  require(msg.value >= AIRLINE_REGISTRATION_FEE, "Minimum funding needed to register") 
     {
-        fsd.transfer(AIRLINE_REGISTRATION_FEE);
+        address(uint160(address(fsd))).transfer(AIRLINE_REGISTRATION_FEE);
         return fsd.fundAirline(msg.sender, AIRLINE_REGISTRATION_FEE);
     }
 
     function buy (bytes32 flight)
                              public 
                              payable 
-                             requiresIsOperational 
+                             requireIsOperational 
                              onlyRegisteredFlight(flight) 
                              onlyNotLandedFlight(flight) 
-                             require(msg.value <= MAX_INSURANCE_PLAN, "Value exceeds max insurance plan.") {
-        fsd.transfer(msg.value);                        
-        fsd.buy(flight, msg.sender, msg.value, INSURANCE_PAYOUT)
+                   //          require(msg.value <= MAX_INSURANCE_PLAN, "Value exceeds max insurance plan.") 
+                             {
+        address(uint160(address(fsd))).transfer(msg.value);                        
+        fsd.buy(flight, msg.sender, msg.value, INSURANCE_PAYOUT);
 
     }
 // region ORACLE MANAGEMENT
@@ -342,7 +343,7 @@ contract FlightSuretyApp {
                             )
                             view
                             external
-                            returns(uint8[3])
+                            returns(uint8[3] memory)
     {
         require(oracles[msg.sender].isRegistered, "Not registered as an oracle");
 
@@ -360,7 +361,7 @@ contract FlightSuretyApp {
                         (
                             uint8 index,
                             address airline,
-                            string flight,
+                            string calldata flight,
                             uint256 timestamp,
                             uint8 statusCode
                         )
@@ -390,7 +391,7 @@ contract FlightSuretyApp {
     function getFlightKey
                         (
                             address airline,
-                            string flight,
+                            string memory flight,
                             uint256 timestamp
                         )
                         pure
@@ -406,7 +407,7 @@ contract FlightSuretyApp {
                                 address account         
                             )
                             internal
-                            returns(uint8[3])
+                            returns(uint8[3] memory)
     {
         uint8[3] memory indexes;
         indexes[0] = getRandomIndex(account);
@@ -453,7 +454,7 @@ contract FlightSuretyData {
     function getRegisteredFlightCount() public view returns(uint256);
     function isAirlineRegistered (address airline) public view returns(bool);
     function isAirlineFunded (address airline) public view returns(bool);
-    function isFlightRegistered (address flight) public view returns(bool);
+    function isFlightRegistered (bytes32 flight) public view returns(bool);
     function hasFlightLanded (bytes32 flight) public view returns(bool);
     function processFlightStatus(address airline, string calldata flight, uint256 timestamp, uint status) external;
     function isOperational() 
@@ -475,9 +476,9 @@ contract FlightSuretyData {
                             (   
                                 bytes32 flight,
                                 address airline,
-                                string memory from,
-                                string memory to,
-                                uint256 landing
+                                string calldata from,
+                                string calldata to,
+                                string calldata landing
                             )
                             external;
     function buy
@@ -513,12 +514,12 @@ contract FlightSuretyData {
                         )
                         pure
                         internal
-                        returns(bytes32) 
+                        returns(bytes32);
     function fundAirline
                             (   
                                 address airline,
-                                address originalAirline
+                                uint256 amt
                             )
-                            external
+                            external;
 
 }

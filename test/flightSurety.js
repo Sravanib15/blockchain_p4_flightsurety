@@ -1,13 +1,14 @@
 
 var Test = require('../config/testConfig.js');
 var BigNumber = require('bignumber.js');
-
+var web3 = require('web3');
 contract('Flight Surety Tests', async (accounts) => {
 
   var config;
+  var web3;
   before('setup contract', async () => {
     config = await Test.Config(accounts);
-    await config.flightSuretyData.authorizeCaller(config.flightSuretyApp.address);
+    web3 = new Web3(new Web3.providers.HttpProvider(config.url));
   });
 
   /****************************************************************************************/
