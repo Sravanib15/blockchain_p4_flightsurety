@@ -18,6 +18,8 @@ To run truffle tests:
 `truffle test ./test/flightSurety.js`
 `truffle test ./test/oracles.js`
 
+# Airline tests are done as part of FlightSurety tests
+
 To use the dapp:
 
 `truffle migrate`
