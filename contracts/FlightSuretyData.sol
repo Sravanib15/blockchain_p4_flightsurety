@@ -28,7 +28,6 @@ contract FlightSuretyData {
         string to;
         address airline;
         uint status;
-        string landing;
     }
 
     struct Claim {
@@ -69,7 +68,7 @@ contract FlightSuretyData {
     event AirlineFunded(address airline);
     event Paid(address recipient, uint256 amt);
     event Credited(bytes32 flight, address passenger, uint256 amt);
-    event flightRegistered(bytes32 flight);
+    event FlightRegistered(bytes32 flight);
     event ProcessedFlightStatus(bytes32 flight, uint status);
 
     /********************************************************************************************/
@@ -193,6 +192,10 @@ contract FlightSuretyData {
         return false; 
     }
 
+    function getAirlineFunds(address airline) public view returns(uint256) {
+        return airlines[airline].funds;
+    }
+
    /**
     * @dev Add an airline to the registration queue
     *      Can only be called from FlightSuretyApp contract
@@ -220,11 +223,12 @@ contract FlightSuretyData {
                             )
                             external
                             requireIsOperational
-                            onlyNonRegisteredAirline(airline)
+                            onlyRegisteredAirline(airline)
                             onlyNonFundedAirline(airline)
     {
         airlines[airline].isFunded = true;
         airlines[airline].funds = airlines[airline].funds.add(amt);
+
         emit AirlineFunded(airline);
     }
 
@@ -233,17 +237,16 @@ contract FlightSuretyData {
                                 bytes32 flightKey,
                                 address airline,
                                 string calldata from,
-                                string calldata to,
-                                string calldata landing
+                                string calldata to
                             )
                             external
                             requireIsOperational
                             onlyNonRegisteredFlight(flightKey)
     { 
    //     bytes32 flightKey = getFlightKey(airline, flight, landing);
-        flights[flightKey] = Flight(true, from, to, airline, 0, landing);
+        flights[flightKey] = Flight(true, from, to, airline, 0);
         registeredFlights.push(flightKey);
-        emit flightRegistered(flightKey);
+        emit FlightRegistered(flightKey);
     }
 
     function processFlightStatus(address airline, string calldata flight, uint256 timestamp, uint status) external requireIsOperational {

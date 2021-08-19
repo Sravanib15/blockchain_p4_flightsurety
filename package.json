@@ -11,7 +11,7 @@
     "test": "truffle test ./test/flightSurety.js",
     "dapp": "webpack-dev-server --mode development --config webpack.config.dapp.js",
     "dapp:prod": "webpack --mode production  --config webpack.config.dapp.js",
-    "server": "rm -rf ./build/server && webpack --config webpack.config.server.js"
+    "server": "rm -rf ./prod/server && webpack --config webpack.config.server.js"
   },
   "author": "Nik Kalyani <nik@kalyani.com> https://www.kalyani.com",
   "devDependencies": {
@@ -44,6 +44,7 @@
     "webpack-node-externals": "1.7.2"
   },
   "dependencies": {
-    "@truffle/hdwallet-provider": "^1.4.2"
+    "@truffle/hdwallet-provider": "^1.4.2",
+    "mocha": "^6.2.0"
   }
 }

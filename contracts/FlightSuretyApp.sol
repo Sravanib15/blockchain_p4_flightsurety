@@ -134,13 +134,16 @@ contract FlightSuretyApp {
     /********************************************************************************************/
 
     function isOperational() 
-                            public 
-                            view 
+                            public  
+                            view
                             returns(bool) 
     {
         return operational;  // Modify to call data contract's status
     }
 
+    function setOperatingStatus(bool mode) external {
+        operational = mode;
+    }
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
@@ -193,8 +196,7 @@ contract FlightSuretyApp {
                                     string calldata flight,
                                     uint256 timestamp,
                                     string calldata from,
-                                    string calldata to,
-                                    string calldata landing
+                                    string calldata to
                                 )
                                 external
                                 requireIsOperational
@@ -204,8 +206,7 @@ contract FlightSuretyApp {
             getFlightKey(msg.sender, flight, timestamp),
             msg.sender,
             from,
-            to,
-            landing
+            to
         );
     }
     
@@ -232,13 +233,9 @@ contract FlightSuretyApp {
                         (
                             address airline,
                             string calldata flight,
-                            uint256 timestamp,
-                            bytes32 flightKey                       
+                            uint256 timestamp                     
                         )
                         external
-                        onlyRegisteredFlight(flightKey)
-                        onlyNotLandedFlight(flightKey)
-
     {
         uint8 index = getRandomIndex(msg.sender);
 
@@ -457,6 +454,7 @@ contract FlightSuretyData {
     function isFlightRegistered (bytes32 flight) public view returns(bool);
     function hasFlightLanded (bytes32 flight) public view returns(bool);
     function processFlightStatus(address airline, string calldata flight, uint256 timestamp, uint status) external;
+    function getAirlineFunds(address airline) public returns(uint256);
     function isOperational() 
                             public 
                             view 
@@ -477,8 +475,7 @@ contract FlightSuretyData {
                                 bytes32 flight,
                                 address airline,
                                 string calldata from,
-                                string calldata to,
-                                string calldata landing
+                                string calldata to
                             )
                             external;
     function buy
